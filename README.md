@@ -61,7 +61,7 @@ Already during the setup, MQTT connection is established and callback topic subs
 when Arduino was shutdown last time (UPS or 9V back-up battery ran out of juice). If there was a power outage then current temperature and mains
 supply status is updated to the Domoticz.
 
-Purpose of main loop is be simple in order to spend as much time as possible in NexaReceive function in order to capture all transmissions
+Purpose of main loop is to be simple in order to spend as much time as possible in NexaReceive function in order to capture all transmissions
 from the door sensors. If data has been received from the door sensor, it will be send immediately to the Domoticz. The Nexa door sensors send
 several times same message in a row and therefore there is filtering functionality which filters same messages out.
 
@@ -69,14 +69,14 @@ Supply status is checked in the main loop as well. There is a debounce function 
 
 Timings of temperature measurements are taken care by timers. Measured temperature values are sent immediately to the Domoticz.
 
-The alarm siren will turned on according to the MQTT callback messages from the Domoticz. The alarm siren functionality includes a features which will
-turn siren off after predefined time period has elapsed in order to avoid situation where the alarm siren stays on forever if there would be communication
+The alarm siren will be turned on according to the MQTT callback messages from the Domoticz. The alarm siren functionality includes a feature which will
+turn siren off after predefined time period has elapsed in order to avoid situation where the alarm siren stays on "forever" if there would be communication
 break between the Arduino and the Domoticz.
 
 It's constantly checked in main loop is MQTT connection alive because of MQTT callback function. If the MQTT connection has been disconnected, it will be
 established again. If the MQTT connection has been disconnected 10 times altogether for some reason, an ethernet connection will be initialized again.
 
-Events of the door sensors & the alarm siren and temperature values are added to the MQTT payload (payload differs depends on a type of a sensor/switch). 
+Events of the door sensors & alarm siren and temperature values are added to the MQTT payload (payload differs depends on a type of a sensor/switch). 
 The created MQTT payload is sent to MQTT server via internet.
 
 It's possible to print amount of free RAM memory of Arduino via serial port by uncommenting `#define RAM_DEBUG` line
