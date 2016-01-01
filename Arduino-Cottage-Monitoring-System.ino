@@ -52,7 +52,7 @@ int mqttConnectionFails = 0; // If MQTT connection is disconnected for some reas
 #define  DEVICE_ID  "Uno"
 #define MQTT_SERVER "192.168.1.2" // IP address of MQTT server. CHANGE THIS TO CORRECT ONE!
 
-// Callback function header
+// MQTT callback function header
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 
 //MQTT initialization
