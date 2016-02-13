@@ -7,21 +7,23 @@
    -Can be powered with 9V battery if needed (back-up power in case of power outage if no UPS is used/available)
    -2-way communication with Domoticzs over internet using MQTT protocol (ethernet shield is used in the system)
 
-   Temperature readings are read from DS18B20 digital temperature sensor via OneWire bus and Dallas Temperature Control Library. 
+   Temperature readings are read from DS18B20 digital temperature sensor via OneWire bus and Dallas Temperature Control Library.
    Door sensor monitoring utilises 433MHz RF receiver connected to a GPIO pin of the Arduino. Siren control requires a switch box
    which includes a transistor and input for external power supply. Another external power supply is connected to input of opto-isolator
    and the system will detect based on output level of the opto-isolator is mains power present or not (this functionality requires that the
    Arduino is powered by UPS or external back-up battery during the power outage). The power outage functionality includes a debounce filter in
    order to filter short glitches out.
-   
+
    All the data between Domoticz is transmitted/received via internet using the MQTT protocol.
 
    In practice all the "intelligence" is in Domoticz and therefore for example decision about turning the alarm siren on/off is done by the Domoticz.
    The Arduino has a timer which will eventually turn siren off if elapsed.
-   
+
+   The sketch needs Arduino_Cottage_Monitoring_System.h header file in order to work. The header file includes settings for the sketch.
    The sketch also includes a DEBUG functions to check the amount of free RAM, print Nexa receiver timing data and relevant time information.
    */
 
+#include "Arduino-Cottage-Monitoring-System.h" // Header file containing settings for the sketch
 #include <Ethernet.h>
 #include <OneWire.h>
 #include <SPI.h>
@@ -34,11 +36,11 @@
 unsigned long startupDelay = 120000; /* Start-up delay in milliseconds which is needed because start-up of 3G modem takes pretty long time.
 3G modem has to be connected to internet before Arduino is started-up. Default value is 2min (120000ms)*/
 
-// Temperature measurement variables are initialised
+// Temperature measurement variables are initialized
 const unsigned int tempMeasInterval = 1800; // Set temperature measurement interval in seconds. Default value 1800s (30min)
 float Temperature = 0; // Measured temperature is stored to this variable
 
-// OneWire and Dallas temperature sensors library are initialised
+// OneWire and Dallas temperature sensors library are initialized
 #define ONE_WIRE_BUS 2 // OneWire data wire is plugged into pin 2 on the Arduino. Parasite powering scheme is used.
 OneWire oneWire(ONE_WIRE_BUS); // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 DallasTemperature sensors(&oneWire); // Pass our oneWire reference to Dallas Temperature.
@@ -48,22 +50,18 @@ byte mac[] = { 0x90, 0xA5, 0xDA, 0x0D, 0xCC, 0x55 }; // this must be unique
 EthernetClient ethClient; // Initialize Arduino Ethernet Client
 int mqttConnectionFails = 0; // If MQTT connection is disconnected for some reason, this variable is increment by 1
 
-//MQTT configuration
-#define  DEVICE_ID  "Uno"
-#define MQTT_SERVER "192.168.1.2" // IP address of MQTT server. CHANGE THIS TO CORRECT ONE!
-
 // MQTT callback function header
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 
 //MQTT initialization
-PubSubClient mqttClient(MQTT_SERVER, 1883, mqttCallback, ethClient);
+PubSubClient mqttClient(MQTT_SERVER, 1883, mqttCallback, ethClient); // MQTT_SERVER constructor parameter is defined in Arduino_Cottage_Monitoring_System.h header file
 char clientID[50];
 char topic[50];
 char msg[80];
-char subscribeTopic[ ] = "/events/domoticz/NAME_OF_TOPIC/#"; // Subscribed topic for the callback function. Arduino will listen this topic for incoming MQTT messages from the Domoticz. CHANGE THIS TO CORRECT ONE!
+char subscribeTopic[ ] = MQTT_SUBSCRIBE_TOPIC; // Arduino will listen this topic for incoming MQTT messages from the Domoticz. The MQTT_SUBSCRIBE_TOPIC is defined in Arduino_Cottage_Monitoring_System.h header file
 
 //MQTT variables
-String topicID = "MQTT_TOPIC_ID"; // MQTT topicID which is used to create a MQTT topic used in data transmission to the Domoticz. CHANGE THIS TO CORRECT ONE!
+String topicID = MQTT_TOPIC; // MQTT topic used in data transmission to the Domoticz. The MQTT_TOPIC is defined in Arduino_Cottage_Monitoring_System.h header file
 int temperatureSensordtype = 80; // dtype (device type for temperature sensor) is used to help creating MQTT payload
 int switchdtype = 32; // dtype (device type for door switches and siren) is used to help creating MQTT payload
 const int temperatureSensorIDX = 18; // IDX number of temperature sensor
@@ -122,7 +120,7 @@ void setup()
 
   //Create MQTT client String
   String clientIDStr = "Arduino-";
-  clientIDStr.concat(DEVICE_ID);
+  clientIDStr.concat(DEVICE_ID); // DEVICE_ID is defined in Arduino_Cottage_Monitoring_System.h header file
   clientIDStr.toCharArray(clientID, clientIDStr.length()+1);
 
   //MQTT connection is established and topic subscribed for the callback function
@@ -300,7 +298,7 @@ unsigned long NexaReceive(unsigned long &sender, boolean &on, boolean &group) {
     if(rotations++ > 10000)
       return 0;
   }
-  
+
   #ifdef NEXA_DEBUG
     t1 = t; // Save latch timing for NEXA_DEBUGging purposes
   #endif
@@ -313,7 +311,7 @@ unsigned long NexaReceive(unsigned long &sender, boolean &on, boolean &group) {
     if(rotations++ > 10000)
       return 0;
   }
-  
+
   #ifdef NEXA_DEBUG
     t2 = t; // Save latch timing for NEXA_DEBUGging purposes
   #endif
@@ -559,4 +557,3 @@ int memoryFree() //Function to return the amount of free RAM
   }
   return freeValue;
 }
-

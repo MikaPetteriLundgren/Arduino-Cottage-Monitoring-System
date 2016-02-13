@@ -1,4 +1,4 @@
-Arduino-Cottage-Monitoring-System
+Arduino_Cottage_Monitoring_System
 =================
 
 Arduino based house/cottage monitoring system is a remote companion device for Domoticz system which is located in different
@@ -21,6 +21,8 @@ All the data between Domoticz is transmitted/received via internet using the MQT
 
 In practice all the "intelligence" is in Domoticz and therefore for example decision about turning the alarm siren on/off is done by the Domoticz.
 The Arduino has a timer which will eventually turn siren off if elapsed.
+
+The sketch needs Arduino-Cottage-Monitoring-System.h header file in order to work. The header file includes settings for the sketch.
 
 Arduino-Cottage-Monitoring-System sketch will need following HW and SW libraries to work:
 
