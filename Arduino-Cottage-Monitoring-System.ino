@@ -61,7 +61,7 @@ char msg[80];
 char subscribeTopic[ ] = MQTT_SUBSCRIBE_TOPIC; // Arduino will listen this topic for incoming MQTT messages from the Domoticz. The MQTT_SUBSCRIBE_TOPIC is defined in Arduino_Cottage_Monitoring_System.h header file
 
 //MQTT variables
-String topicID = MQTT_TOPIC; // MQTT topic used in data transmission to the Domoticz. The MQTT_TOPIC is defined in Arduino_Cottage_Monitoring_System.h header file
+//String topicID = MQTT_TOPIC; // MQTT topic used in data transmission to the Domoticz. The MQTT_TOPIC is defined in Arduino_Cottage_Monitoring_System.h header file
 int temperatureSensordtype = 80; // dtype (device type for temperature sensor) is used to help creating MQTT payload
 int switchdtype = 32; // dtype (device type for door switches and siren) is used to help creating MQTT payload
 const int temperatureSensorIDX = 18; // IDX number of temperature sensor
@@ -70,6 +70,8 @@ const int frontDoorSwitchIDX = 16; // IDX number of front door switch
 const int supplyIDX = 19; // IDX number of virtual electricity on/off switch
 const int sirenIDX = 22; // IDX number of virtual electricity on/off switch
 int switchStatus = 0; // Status of switch (0 = Closed/Off & 1 = Open/on)
+int receivedIDX = 0; // Received IDX number will be stored to this variable
+int deviceStatus = 0; // Received status of device will be stored to this variable
 
 // Variables for supply status function
 const int eepromAddress = 5; // EEPROM address to store status of supplyPin
@@ -414,11 +416,6 @@ void sendMQTTPayload(String payload) // Sends MQTT payload to the MQTT server ru
 // MQTT server deliveres data to the Domoticz server running on a same Raspberry Pi
 {
 
-  // Create MQTT topic and convert it to char array
-	String topicStr = "/actions/domoticz/";
-	topicStr.concat(topicID);
-	topicStr.toCharArray(topic, topicStr.length()+1);
-
 	// Convert payload to char array
 	payload.toCharArray(msg, payload.length()+1);
 
@@ -429,7 +426,7 @@ void sendMQTTPayload(String payload) // Sends MQTT payload to the MQTT server ru
     }
 
 	//Publish payload to MQTT broker
-	if (mqttClient.publish(topic, msg))
+	if (mqttClient.publish(MQTT_TOPIC, msg))
 	{
 		Serial.print("Following data published to MQTT broker: ");
 		Serial.print(topic);
@@ -438,43 +435,52 @@ void sendMQTTPayload(String payload) // Sends MQTT payload to the MQTT server ru
 		Serial.println();
 	}
 	else
-		Serial.println(F("Publishing to MQTT broker failed..."));
+		Serial.println(F("Publishing to MQTT broker failed"));
 }
 
 // mqttCallback function handles message arrived on subscribed MQTT topic(s)
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-
-  Serial.println("MQTT callback received");
-
-  //Create a String from the received payload (char array)
-  String callBackPayload = "";
-  int i;
-
-  for (i = 0; i < length; i++)
-	{
-		//Serial.print((char)payload[i]);
-		callBackPayload += (char)payload[i];
-	}
-
-  // Act according to received payload
-  if (callBackPayload == "On") // Siren to be set On
-  {
-	  Serial.println(F("Siren turned On"));
-	  digitalWrite(sirenPin, HIGH);
-	  Alarm.timerOnce(sirenWatchDogTimer, sirenOffFunction); // Timer is set which will turn off siren after sirenWatchDogTimer period has elapsed
+  Serial.print(F("MQTT message arrived ["));
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
   }
-  else if (callBackPayload == "Off" && digitalRead(sirenPin) == LOW) // No actions needed if siren is already off
+  Serial.println();
+
+  // Receive data to be parsed
+  Serial.println(F("Starting parsing received data..."));
+  char *rest; // Help variable needed with following iterations
+  
+  //  First strtok iteration. Parses IDX number out from the received data.
+  //receivedIDX = atoi (strtok_r((byte*)payload,":",&rest)); // Received IDX is converted to int with atoi function in order to use it as constructor parameter and with switch structure
+  receivedIDX = atoi (strtok_r(payload,":",&rest));
+  Serial.print(F("IDX = "));
+  Serial.println(receivedIDX);
+
+  //  Second strtok iteration. Parses status of device out from the received data.
+  deviceStatus = atoi (strtok_r(NULL,":",&rest)); // Received dtype is converted to int with atoi function in order to use it as constructor parameter and with switch structure
+  Serial.print(F("Status of device = "));
+  Serial.println(deviceStatus);
+
+  //Act according to the received data
+  if (receivedIDX == sirenIDX && deviceStatus == 0) // Siren to be set Off
   {
-	  Serial.println(F("Siren is already off. No actions needed!"));
+    sirenOffFunction();
+    Serial.println(F("Siren turned off"));
+    sendMQTTPayload("MQTT command executed");
   }
-  else if (callBackPayload == "Off") // Siren to be set Off
-    {
-  	  sirenOffFunction();
-    }
-  else // Not valid state. No actions to be taken
+  else if (receivedIDX == sirenIDX && deviceStatus == 1) // Siren to be set On
   {
-	  Serial.print(F("Following not valid data received. No actions to be taken:"));
-	  Serial.println(callBackPayload);
+    digitalWrite(sirenPin, HIGH);
+    Alarm.timerOnce(sirenWatchDogTimer, sirenOffFunction); // Timer is set which will turn off siren after sirenWatchDogTimer period has elapsed
+    Serial.println(F("Siren turned on"));
+    sendMQTTPayload("MQTT command executed");
+  }
+  else //Not valid state. No actions to be taken
+  {
+    Serial.println(F("Incorrect IDX and/or status received"));
+    sendMQTTPayload("MQTT command failed");
   }
 }
 
